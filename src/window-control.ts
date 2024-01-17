@@ -23,7 +23,7 @@ export class WindowControl {
           (document.getElementById("password") as HTMLInputElement).value
         );
       });
-    } else if (windowLocationHref.includes("lobby")) {
+    } else if (windowLocationHref.includes("index")) {
       document.getElementById("login").addEventListener("click", () => {
         window.location.href = "./login.html";
       });
