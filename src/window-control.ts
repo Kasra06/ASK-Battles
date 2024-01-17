@@ -8,7 +8,7 @@ export class WindowControl {
   }
 
   private updateWindowControls(windowLocationHref: string) {
-    if(windowLocationHref === "https://kasra06.github.io/ASK-Battles/"){
+    if(windowLocationHref === "lobby"){
       document.getElementById("login").addEventListener("click", () => {
         window.location.href = "./login.html";
       });

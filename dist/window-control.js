@@ -15,7 +15,7 @@ export class WindowControl {
                 this.firebase.login(document.getElementById("email").value, document.getElementById("password").value);
             });
         }
-        else if (windowLocationHref.includes("index")) {
+        else if (windowLocationHref.includes("lobby")) {
             document.getElementById("login").addEventListener("click", () => {
                 window.location.href = "./login.html";
             });
