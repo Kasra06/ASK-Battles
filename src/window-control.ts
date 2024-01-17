@@ -8,7 +8,15 @@ export class WindowControl {
   }
 
   private updateWindowControls(windowLocationHref: string) {
-    if (windowLocationHref.includes("register")) {
+    if(windowLocationHref === "https://kasra06.github.io/ASK-Battles/"){
+      document.getElementById("login").addEventListener("click", () => {
+        window.location.href = "./login.html";
+      });
+      document.getElementById("register").addEventListener("click", () => {
+        window.location.href = "./register.html";
+      }); 
+    }
+    else if (windowLocationHref.includes("register")) {
       document.getElementById("register").addEventListener("click", () => {
         this.firebase.register(
           (document.getElementById("email") as HTMLInputElement).value,
@@ -22,13 +30,6 @@ export class WindowControl {
           (document.getElementById("email") as HTMLInputElement).value,
           (document.getElementById("password") as HTMLInputElement).value
         );
-      });
-    } else if (windowLocationHref.includes("index")) {
-      document.getElementById("login").addEventListener("click", () => {
-        window.location.href = "./login.html";
-      });
-      document.getElementById("register").addEventListener("click", () => {
-        window.location.href = "./register.html";
       });
     } else if (windowLocationHref.includes("join")) {
       document.getElementById("join").addEventListener("click", () => {
