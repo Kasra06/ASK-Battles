@@ -23,6 +23,26 @@ export class WindowControl {
                 window.location.href = "./register.html";
             });
         }
+        else if (windowLocationHref.includes("menu")) {
+            document.getElementById("join-room").addEventListener("click", () => {
+                window.location.href = "./join-room.html";
+            });
+            document.getElementById("create-room").addEventListener("click", () => {
+                this.firebase.createRoom();
+            });
+        }
+        else if (windowLocationHref.includes("join")) {
+            document.getElementById("join").addEventListener("click", () => {
+                this.firebase.joinRoom(document.getElementById("room-code").value);
+            });
+        }
+        else if (windowLocationHref.includes("room")) {
+            console.log(this.firebase);
+            console.log(this.firebase.newClient);
+            console.log(this.firebase.newClient.uuid);
+            document.getElementById("room-code").innerText =
+                this.firebase.newClient.uuid;
+        }
     }
 }
 //# sourceMappingURL=window-control.js.map

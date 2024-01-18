@@ -11,24 +11,23 @@ import {
   // @ts-ignore Import module
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { firebaseConfig } from "./config.js";
+import { Client } from "./client.js";
 // @ts-ignore Import module
 import {
   getAuth,
   onAuthStateChanged,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  updateProfile,
   signOut,
   // @ts-ignore Import module
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-//import { Client } from "./client.js";
 
 class FirebaseApp {
   private app;
   private db;
   private auth;
-  private playerId: string;
-  private playerRef: string;
+  private _newClient: Client;
   constructor() {
     this.app = initializeApp(firebaseConfig);
     this.db = getDatabase(this.app);
@@ -36,19 +35,20 @@ class FirebaseApp {
   }
   public register(email: string, password: string, username: string): void {
     console.log(email);
-    onAuthStateChanged(this.auth, (user) => {
-      console.log(user);
-      if (user) {
-        this.playerId = user.uid;
-        this.playerRef = `players/${this.playerId}`;
-        user.displayName = username;
-      }
-    });
     createUserWithEmailAndPassword(this.auth, email, password)
-      .then((user) => {
-        console.log("User: " + user.user);
-        this.addToActivePlayers();
-        //window.location.href = "./game.html";
+      .then(() => {
+        /**
+         * Do no move. It can only get called when user is created.
+         * Do not move to window control, since when its there, it will run before the user is created
+         * leading to an error.
+         */
+
+        updateProfile(this.auth.currentUser, {
+          displayName: username,
+        }).then(() => {
+          this.listenToConnection();
+          window.location.href = "./menu.html";
+        });
       })
       .catch((error) => {
         // Handle error
@@ -59,53 +59,77 @@ class FirebaseApp {
         }
         console.error(`Error (${errorCode}): ${errorMessage}`);
       });
-    this.listenToConnection();
-  }
-
-  private listenToConnection() {
-    onValue(ref(this.db, ".info/connected"), (snap) => {
-      if (snap.val()) {
-        this.addToActivePlayers();
-      } else {
-        this.removeActivePlayer();
-      }
-    });
   }
 
   public login(email: string, password: string): void {
     signInWithEmailAndPassword(this.auth, email, password)
-      .then((user) => {
-        this.addToActivePlayers();
-        // window.location.href = "./game.html";
+      .then(() => {
+        this.listenToConnection();
+        window.location.href = "./menu.html";
       })
       .catch((error) => {
         if (error.message.includes("invalid")) {
           alert("Wrong password");
         }
       });
-    this.listenToConnection();
+  }
+
+  public listenToConnection() {
+    onDisconnect(
+      ref(this.db, `active-players/${this.auth.currentUser.uid}`)
+    ).remove();
+    onValue(ref(this.db, ".info/connected"), (snap) => {
+      if (snap.val()) {
+        this.addToActivePlayers();
+      } else {
+        signOut(this.auth).then(() => {
+          remove(ref(this.db, `active-players/${this.auth.currentUser.uid}`));
+        });
+      }
+    });
   }
 
   private addToActivePlayers() {
+    console.log("adding to active players");
+    console.log(this.db);
+    console.log(this.auth.currentUser.uid);
+    console.log(this.auth.currentUser);
+    console.log(this.auth.currentUser.displayName);
+    console.log(this.auth.currentUser);
     set(ref(this.db, `active-players/${this.auth.currentUser.uid}`), {
       username: this.auth.currentUser.displayName,
     });
   }
 
-  private removeActivePlayer() {
-    remove(ref(this.db, `active-players/${this.auth.currentUser.uid}`));
+  public createRoom() {
+    this._newClient = new Client(this, this.auth.currentUser.uid);
+    console.log(this._newClient);
+    set(
+      ref(
+        this.db,
+        `rooms/${this._newClient.uuid}/${this.auth.currentUser.uid}`
+      ),
+      {
+        username: this.auth.currentUser.displayName,
+      }
+    )
+      .then(() => {
+        window.location.href = "./room.html";
+      })
+      .catch((error) => {
+        console.log(error.code, error.message);
+      });
   }
-  // public createRoom() {
-  //   const newRoom: Client = new Client(this, this.playerId);
-  //   this.joinRoom(newRoom.uuid, 1);
-  // }
 
-  // public joinRoom(roomId: string, playerNumber: number) {
-  //   set(ref(this.db, `rooms/${roomId}/player${playerNumber}`), {
-  //     id: this.playerId,
-  //   });
-  //   window.location.href = "./room.html";
-  // }
+  public joinRoom(roomId: string) {
+    set(ref(this.db, `rooms/${roomId}/${this.auth().currentUser.uid}`), {
+      username: this.auth().currentUser.displayName,
+    });
+  }
+
+  public get newClient() {
+    return this._newClient;
+  }
 }
 
 export { FirebaseApp };

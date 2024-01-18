@@ -1,17 +1,23 @@
 import { FirebaseApp } from "./firebase";
-import { v4 as uuidv4 } from "uuid";
+// import { v4 } from "uuid";
 
-export class Client {
+class Client {
   private firebase: FirebaseApp;
-  private players: string[];
-  readonly uuid: string;
+  private players: string[] = [];
+  private _uuid: string;
   constructor(firebase: FirebaseApp, playerId: string) {
     this.firebase = firebase;
-    this.players.push(playerId);
-    this.uuid = uuidv4();
+    this.players[0] = playerId;
+    this._uuid = "213";
   }
 
   public nOfPlayers(): number {
     return this.players.length;
   }
+
+  public get uuid() {
+    return this._uuid;
+  }
 }
+
+export { Client };

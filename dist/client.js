@@ -1,15 +1,19 @@
-import { v4 as uuidv4 } from "uuid";
-export class Client {
+// import { v4 } from "uuid";
+class Client {
     firebase;
-    players;
-    uuid;
+    players = [];
+    _uuid;
     constructor(firebase, playerId) {
         this.firebase = firebase;
-        this.players.push(playerId);
-        this.uuid = uuidv4();
+        this.players[0] = playerId;
+        this._uuid = "213";
     }
     nOfPlayers() {
         return this.players.length;
     }
+    get uuid() {
+        return this._uuid;
+    }
 }
+export { Client };
 //# sourceMappingURL=client.js.map
