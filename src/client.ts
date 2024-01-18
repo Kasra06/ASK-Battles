@@ -1,5 +1,5 @@
-import { v4 as uuidv4 } from "uuid";
 import { FirebaseApp } from "./firebase";
+import { v4 as uuidv4 } from "uuid";
 
 export class Client {
   private firebase: FirebaseApp;

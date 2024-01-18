@@ -1,15 +1,15 @@
 // @ts-ignore Import module
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 // @ts-ignore Import module
-import { getDatabase, set, ref,
+import { getDatabase, set, ref, remove, onValue,
 // @ts-ignore Import module
  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-// @ts-ignore Import module
 import { firebaseConfig } from "./config.js";
 // @ts-ignore Import module
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword,
 // @ts-ignore Import module
  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+//import { Client } from "./client.js";
 class FirebaseApp {
     app;
     db;
@@ -28,15 +28,14 @@ class FirebaseApp {
             if (user) {
                 this.playerId = user.uid;
                 this.playerRef = `players/${this.playerId}`;
-                set(ref(this.db, this.playerRef), {
-                    username: username,
-                });
+                user.displayName = username;
             }
         });
         createUserWithEmailAndPassword(this.auth, email, password)
             .then((user) => {
             console.log("User: " + user.user);
-            window.location.href = "./game.html";
+            this.addToActivePlayers();
+            //window.location.href = "./game.html";
         })
             .catch((error) => {
             // Handle error
@@ -47,17 +46,38 @@ class FirebaseApp {
             }
             console.error(`Error (${errorCode}): ${errorMessage}`);
         });
+        this.listenToConnection();
+    }
+    listenToConnection() {
+        onValue(ref(this.db, ".info/connected"), (snap) => {
+            if (snap.val()) {
+                this.addToActivePlayers();
+            }
+            else {
+                this.removeActivePlayer();
+            }
+        });
     }
     login(email, password) {
         signInWithEmailAndPassword(this.auth, email, password)
-            .then(() => {
-            window.location.href = "./game.html";
+            .then((user) => {
+            this.addToActivePlayers();
+            // window.location.href = "./game.html";
         })
             .catch((error) => {
             if (error.message.includes("invalid")) {
-                alert("Wrong info");
+                alert("Wrong password");
             }
         });
+        this.listenToConnection();
+    }
+    addToActivePlayers() {
+        set(ref(this.db, `active-players/${this.auth.currentUser.uid}`), {
+            username: this.auth.currentUser.displayName,
+        });
+    }
+    removeActivePlayer() {
+        remove(ref(this.db, `active-players/${this.auth.currentUser.uid}`));
     }
 }
 export { FirebaseApp };

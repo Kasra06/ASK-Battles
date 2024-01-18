@@ -1,6 +1,6 @@
 import { FirebaseApp } from "./firebase.js";
 import { WindowControl } from "./window-control.js";
-class Canvas {
+class System {
     firebase;
     windowController;
     constructor() {
@@ -9,5 +9,5 @@ class Canvas {
         this.windowController = new WindowControl(this.firebase);
     }
 }
-new Canvas();
+new System();
 //# sourceMappingURL=system.js.map

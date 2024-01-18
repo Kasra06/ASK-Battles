@@ -5,10 +5,11 @@ import {
   getDatabase,
   set,
   ref,
+  remove,
   onValue,
+  onDisconnect,
   // @ts-ignore Import module
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-// @ts-ignore Import module
 import { firebaseConfig } from "./config.js";
 // @ts-ignore Import module
 import {
@@ -16,10 +17,11 @@ import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signOut,
   // @ts-ignore Import module
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-import { Client } from "./client.js";
+//import { Client } from "./client.js";
 
 class FirebaseApp {
   private app;
@@ -39,15 +41,14 @@ class FirebaseApp {
       if (user) {
         this.playerId = user.uid;
         this.playerRef = `players/${this.playerId}`;
-        set(ref(this.db, this.playerRef), {
-          username: username,
-        });
+        user.displayName = username;
       }
     });
     createUserWithEmailAndPassword(this.auth, email, password)
       .then((user) => {
         console.log("User: " + user.user);
-        window.location.href = "./game.html";
+        this.addToActivePlayers();
+        //window.location.href = "./game.html";
       })
       .catch((error) => {
         // Handle error
@@ -58,31 +59,53 @@ class FirebaseApp {
         }
         console.error(`Error (${errorCode}): ${errorMessage}`);
       });
+    this.listenToConnection();
+  }
+
+  private listenToConnection() {
+    onValue(ref(this.db, ".info/connected"), (snap) => {
+      if (snap.val()) {
+        this.addToActivePlayers();
+      } else {
+        this.removeActivePlayer();
+      }
+    });
   }
 
   public login(email: string, password: string): void {
     signInWithEmailAndPassword(this.auth, email, password)
-      .then(() => {
-        window.location.href = "./game.html";
+      .then((user) => {
+        this.addToActivePlayers();
+        // window.location.href = "./game.html";
       })
       .catch((error) => {
         if (error.message.includes("invalid")) {
-          alert("Wrong passwordx`");
+          alert("Wrong password");
         }
       });
+    this.listenToConnection();
   }
 
-  public createRoom() {
-    const newRoom: Client = new Client(this, this.playerId);
-    this.joinRoom(newRoom.uuid, 1);
-  }
-
-  public joinRoom(roomId: string, playerNumber: number) {
-    set(ref(this.db, `rooms/${roomId}/player${playerNumber}`), {
-      id: this.playerId,
+  private addToActivePlayers() {
+    set(ref(this.db, `active-players/${this.auth.currentUser.uid}`), {
+      username: this.auth.currentUser.displayName,
     });
-    window.location.href = "./room.html";
   }
+
+  private removeActivePlayer() {
+    remove(ref(this.db, `active-players/${this.auth.currentUser.uid}`));
+  }
+  // public createRoom() {
+  //   const newRoom: Client = new Client(this, this.playerId);
+  //   this.joinRoom(newRoom.uuid, 1);
+  // }
+
+  // public joinRoom(roomId: string, playerNumber: number) {
+  //   set(ref(this.db, `rooms/${roomId}/player${playerNumber}`), {
+  //     id: this.playerId,
+  //   });
+  //   window.location.href = "./room.html";
+  // }
 }
 
 export { FirebaseApp };
