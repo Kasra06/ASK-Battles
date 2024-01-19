@@ -25,10 +25,10 @@ export class WindowControl {
         }
         else if (windowLocationHref.includes("menu")) {
             document.getElementById("join-room").addEventListener("click", () => {
-                window.location.href = "./join-room.html";
+                window.location.href = "./join.html";
             });
             document.getElementById("create-room").addEventListener("click", () => {
-                this.firebase.createRoom();
+                window.location.href = "./room.html";
             });
         }
         else if (windowLocationHref.includes("join")) {
@@ -37,11 +37,11 @@ export class WindowControl {
             });
         }
         else if (windowLocationHref.includes("room")) {
-            console.log(this.firebase);
-            console.log(this.firebase.newClient);
-            console.log(this.firebase.newClient.uuid);
-            document.getElementById("room-code").innerText =
-                this.firebase.newClient.uuid;
+            this.firebase.createRoom().then(() => {
+                console.log(this.firebase);
+                console.log(this.firebase.newClient);
+                document.getElementById("room-code").innerText = this.firebase.newClient.uid;
+            });
         }
     }
 }

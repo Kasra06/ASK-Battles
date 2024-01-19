@@ -32,6 +32,14 @@ class FirebaseApp {
     this.app = initializeApp(firebaseConfig);
     this.db = getDatabase(this.app);
     this.auth = getAuth(this.app);
+    onAuthStateChanged(this.auth, (user) => {
+      if (user) {
+        console.log("user is signed in", user.displayName);
+        console.log("current User", this.auth.currentUser.displayName);
+      } else {
+        console.log("user is signed out");
+      }
+    });
   }
   public register(email: string, password: string, username: string): void {
     console.log(email);
@@ -46,8 +54,7 @@ class FirebaseApp {
         updateProfile(this.auth.currentUser, {
           displayName: username,
         }).then(() => {
-          this.listenToConnection();
-          window.location.href = "./menu.html";
+          window.location.href = "./login.html";
         });
       })
       .catch((error) => {
@@ -64,8 +71,11 @@ class FirebaseApp {
   public login(email: string, password: string): void {
     signInWithEmailAndPassword(this.auth, email, password)
       .then(() => {
-        this.listenToConnection();
-        window.location.href = "./menu.html";
+        this.listenToConnection().then(() => {
+          if (this.auth.currentUser) {
+            window.location.href = "./menu.html";
+          }
+        });
       })
       .catch((error) => {
         if (error.message.includes("invalid")) {
@@ -74,51 +84,73 @@ class FirebaseApp {
       });
   }
 
-  public listenToConnection() {
-    onDisconnect(
-      ref(this.db, `active-players/${this.auth.currentUser.uid}`)
-    ).remove();
-    onValue(ref(this.db, ".info/connected"), (snap) => {
-      if (snap.val()) {
-        this.addToActivePlayers();
-      } else {
-        signOut(this.auth).then(() => {
-          remove(ref(this.db, `active-players/${this.auth.currentUser.uid}`));
-        });
-      }
+  public listenToConnection(): Promise<void> {
+    console.log(this.db);
+    console.log(this.auth);
+    console.log(this.auth.currentUser);
+    console.log(this.auth.currentUser.uid);
+
+    return new Promise((resolve, reject) => {
+      onDisconnect(
+        ref(this.db, `active-players/${this.auth.currentUser.uid}`)
+      ).remove();
+
+      onValue(ref(this.db, ".info/connected"), (snap) => {
+        if (snap.val()) {
+          this.addToActivePlayers();
+          resolve(); // Resolve the promise when addToActivePlayers completes
+        } else {
+          signOut(this.auth)
+            .then(() => {
+              remove(
+                ref(this.db, `active-players/${this.auth.currentUser.uid}`)
+              )
+                .then(() => {
+                  resolve(); // Resolve the promise when removal completes
+                })
+                .catch(reject); // Reject the promise if removal fails
+            })
+            .catch(reject); // Reject the promise if signOut fails
+        }
+      });
     });
   }
 
   private addToActivePlayers() {
     console.log("adding to active players");
-    console.log(this.db);
+    console.log(this.auth.currentUser);
     console.log(this.auth.currentUser.uid);
-    console.log(this.auth.currentUser);
     console.log(this.auth.currentUser.displayName);
-    console.log(this.auth.currentUser);
+
     set(ref(this.db, `active-players/${this.auth.currentUser.uid}`), {
       username: this.auth.currentUser.displayName,
     });
   }
 
-  public createRoom() {
-    this._newClient = new Client(this, this.auth.currentUser.uid);
-    console.log(this._newClient);
-    set(
-      ref(
-        this.db,
-        `rooms/${this._newClient.uuid}/${this.auth.currentUser.uid}`
-      ),
-      {
-        username: this.auth.currentUser.displayName,
-      }
-    )
-      .then(() => {
-        window.location.href = "./room.html";
-      })
-      .catch((error) => {
-        console.log(error.code, error.message);
+  public createRoom(): Promise<void> {
+    console.log("creatig room");
+    return new Promise((resolve, reject) => {
+      onAuthStateChanged(this.auth, () => {
+        this._newClient = new Client(this, this.auth.currentUser.uid);
+        set(
+          ref(
+            this.db,
+            `rooms/${this._newClient.uid}/${this.auth.currentUser.uid}`
+          ),
+          {
+            username: this.auth.currentUser.displayName,
+          }
+        )
+          .then(() => {
+            resolve();
+            // window.location.href = "./room.html";
+          })
+          .catch((error) => {
+            console.log(error.code, error.message);
+            reject();
+          });
       });
+    });
   }
 
   public joinRoom(roomId: string) {
