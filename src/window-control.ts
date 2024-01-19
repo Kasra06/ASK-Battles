@@ -1,4 +1,5 @@
 import { FirebaseApp } from "./firebase";
+import { Canvas } from "./canvas";
 
 export class WindowControl {
   private firebase: FirebaseApp;
@@ -36,20 +37,29 @@ export class WindowControl {
       document.getElementById("create-room").addEventListener("click", () => {
         window.location.href = "./room.html";
       });
+      this.firebase.listenToConnection();
     } else if (windowLocationHref.includes("join")) {
       document.getElementById("join").addEventListener("click", () => {
-        this.firebase.joinRoom(
+        localStorage.setItem(
+          "room-code",
           (document.getElementById("room-code") as HTMLInputElement).value
         );
+        window.location.href = "./room.html";
       });
     } else if (windowLocationHref.includes("room")) {
-      this.firebase.createRoom().then(() => {
-        console.log(this.firebase);
-        console.log(this.firebase.newClient);
-        (
-          document.getElementById("room-code") as HTMLParagraphElement
-        ).innerText = this.firebase.newClient.uid;
-      });
+      if (!localStorage.getItem("room-code")) {
+        this.firebase.createRoom().then(() => {
+          console.log(this.firebase);
+          console.log(this.firebase.newClient);
+          (
+            document.getElementById("room-code") as HTMLParagraphElement
+          ).innerText = this.firebase.newClient.uid;
+        });
+      } else {
+        this.firebase.joinRoom(localStorage.getItem("room-code"));
+      }
+    } else if (windowLocationHref.includes("game")) {
+      new Canvas();
     }
   }
 }

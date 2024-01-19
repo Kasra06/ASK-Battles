@@ -33,11 +33,6 @@ class FirebaseApp {
         console.log(email);
         createUserWithEmailAndPassword(this.auth, email, password)
             .then(() => {
-            /**
-             * Do no move. It can only get called when user is created.
-             * Do not move to window control, since when its there, it will run before the user is created
-             * leading to an error.
-             */
             updateProfile(this.auth.currentUser, {
                 displayName: username,
             }).then(() => {
@@ -57,11 +52,7 @@ class FirebaseApp {
     login(email, password) {
         signInWithEmailAndPassword(this.auth, email, password)
             .then(() => {
-            this.listenToConnection().then(() => {
-                if (this.auth.currentUser) {
-                    window.location.href = "./menu.html";
-                }
-            });
+            window.location.href = "./menu.html";
         })
             .catch((error) => {
             if (error.message.includes("invalid")) {
@@ -108,8 +99,9 @@ class FirebaseApp {
         console.log("creatig room");
         return new Promise((resolve, reject) => {
             onAuthStateChanged(this.auth, () => {
-                this._newClient = new Client(this, this.auth.currentUser.uid);
-                set(ref(this.db, `rooms/${this._newClient.uid}/${this.auth.currentUser.uid}`), {
+                this._newClient = new Client(this);
+                set(ref(this.db, `rooms/${this._newClient.uid}/player1`), {
+                    uid: this.auth.currentUser.uid,
                     username: this.auth.currentUser.displayName,
                 })
                     .then(() => {
@@ -124,8 +116,12 @@ class FirebaseApp {
         });
     }
     joinRoom(roomId) {
-        set(ref(this.db, `rooms/${roomId}/${this.auth().currentUser.uid}`), {
-            username: this.auth().currentUser.displayName,
+        this._newClient = new Client(this, roomId);
+        onAuthStateChanged(this.auth, () => {
+            set(ref(this.db, `rooms/${roomId}/player2`), {
+                uid: this.auth.currentUser.uid,
+                username: this.auth.currentUser.displayName,
+            });
         });
     }
     get newClient() {

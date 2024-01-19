@@ -4,10 +4,9 @@ class Client {
     firebase;
     players = [];
     _uuid;
-    constructor(firebase, playerId) {
+    constructor(firebase, roomId = null) {
         this.firebase = firebase;
-        this.players[0] = playerId;
-        this._uuid = uuid4();
+        this._uuid = roomId ? roomId : uuid4();
     }
     nOfPlayers() {
         return this.players.length;
