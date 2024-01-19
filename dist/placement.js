@@ -1,4 +1,4 @@
-import { Rect } from "./rect";
+import { Rect } from "./rect.js";
 export class PlacementTile extends Rect {
     controller;
     _used = false;

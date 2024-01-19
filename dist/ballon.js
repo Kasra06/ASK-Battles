@@ -1,4 +1,4 @@
-import { Rect } from "./rect";
+import { Rect } from "./rect.js";
 export class Ballon extends Rect {
     wayPoints = [
         { x: 754, y: -70 },

@@ -1,5 +1,5 @@
-import { Game } from "./game";
-import { Controller } from "./controller";
+import { Game } from "./game.js";
+import { Controller } from "./controller.js";
 export class Canvas {
     _clientX;
     _clientY;
