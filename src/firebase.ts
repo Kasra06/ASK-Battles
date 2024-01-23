@@ -32,6 +32,9 @@ export class FirebaseApp {
   private auth;
   public newClient: Client;
   private connectionListener;
+  private playerKey: string;
+  private otherPlayerKey: string;
+  private otherConnection: boolean;
   constructor() {
     this.app = initializeApp(firebaseConfig);
     this.db = getDatabase(this.app);
@@ -50,6 +53,7 @@ export class FirebaseApp {
     createUserWithEmailAndPassword(this.auth, email, password)
       .then(() => {
         updateProfile(this.auth.currentUser, {
+          uid: this.auth.currentUser.uid,
           displayName: username,
         }).then(() => {
           window.location.href = "./login.html";
@@ -95,7 +99,6 @@ export class FirebaseApp {
   }
 
   public async listenToConnection(): Promise<void> {
-    await this.waitUntilUserAvailable();
     const connectedRef = ref(this.db, ".info/connected");
     const onConnected = async (snap) => {
       if (snap.val()) {
@@ -108,6 +111,16 @@ export class FirebaseApp {
           onDisconnect(
             ref(this.db, `active-players/${this.auth.currentUser.uid}`)
           ).remove();
+          if (this.newClient) {
+            onDisconnect(
+              ref(this.db, `rooms/${this.newClient.uid}/${this.playerKey}`)
+            ).remove();
+            onDisconnect(
+              ref(this.db, `rooms/${this.newClient.uid}/presence`)
+            ).update({
+              [this.playerKey]: false,
+            });
+          }
         } catch (error) {
           console.error("Error adding user to active-players:", error.message);
         }
@@ -135,7 +148,9 @@ export class FirebaseApp {
       uid: this.auth.currentUser.uid,
       username: this.auth.currentUser.displayName,
     });
-    await this.changePlayerPresence(this.newClient.uid, "player1", true);
+    this.playerKey = "player1";
+    this.otherPlayerKey = "player2";
+    await this.changePlayerPresence(this.newClient.uid, true);
   }
 
   public async joinRoom(roomId: string): Promise<void> {
@@ -144,9 +159,25 @@ export class FirebaseApp {
       uid: this.auth.currentUser.uid,
       username: this.auth.currentUser.displayName,
     });
-    // fix
-    await this.changePlayerPresence(this.newClient.uid, "player2", true);
+    this.playerKey = "player2";
+    this.otherPlayerKey = "player1";
+    await this.changePlayerPresence(this.newClient.uid, true);
+    this.deleteRoomWhenNoPlayers();
   }
+
+  private deleteRoomWhenNoPlayers() {
+    const roomRef = ref(this.db, `rooms/${this.newClient.uid}`);
+    const connectedRef = ref(this.db, `.info/connected`);
+
+    onValue(connectedRef, async (snap): Promise<void> => {
+      console.log(snap.val());
+      if (!snap.val() && !this.otherConnection) {
+        await remove(roomRef);
+        onDisconnect(roomRef).remove();
+      }
+    });
+  }
+
   /**
    * This will listen for when the players join
    * I haven't thought of the use for it yet
@@ -156,17 +187,10 @@ export class FirebaseApp {
     const func = async (snap) => {
       const presenceData = await snap.val();
       console.log(presenceData);
-      console.log(presenceData.player1);
-      console.log(presenceData.player2);
-      if (presenceData && presenceData.player1) {
-        console.log("player1", presenceData.player1);
-      }
-      if (presenceData && presenceData.player2) {
-        console.log("player2", presenceData.player2);
-      }
-      if (presenceData.player1 === false && presenceData.player2 === false) {
-        remove(ref(this.db, `rooms/${this.newClient.uid}`));
-      }
+      this.otherConnection =
+        this.otherPlayerKey === "player1"
+          ? presenceData.player1
+          : presenceData.player2;
     };
     await onValue(ref(this.db, `rooms/${this.newClient.uid}/presence`), func);
   }
@@ -181,11 +205,18 @@ export class FirebaseApp {
 
   private async changePlayerPresence(
     roomId: string,
-    playerKey: string,
     newState: boolean
   ): Promise<void> {
     await update(ref(this.db, `rooms/${roomId}/presence`), {
-      [playerKey]: newState,
+      [this.playerKey]: newState,
     });
+  }
+
+  public async signout(): Promise<void> {
+    await signOut(this.auth);
+  }
+
+  public userIsSingedOut(): boolean {
+    return !this.auth.currentUser;
   }
 }

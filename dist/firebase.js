@@ -7,7 +7,7 @@ import { getDatabase, set, ref, remove, onValue, off, onDisconnect, update,
 import { firebaseConfig } from "./config.js";
 import { Client } from "./client.js";
 // @ts-ignore Import module
-import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile,
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut,
 // @ts-ignore Import module
  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 export class FirebaseApp {
@@ -16,6 +16,9 @@ export class FirebaseApp {
     auth;
     newClient;
     connectionListener;
+    playerKey;
+    otherPlayerKey;
+    otherConnection;
     constructor() {
         this.app = initializeApp(firebaseConfig);
         this.db = getDatabase(this.app);
@@ -35,6 +38,7 @@ export class FirebaseApp {
         createUserWithEmailAndPassword(this.auth, email, password)
             .then(() => {
             updateProfile(this.auth.currentUser, {
+                uid: this.auth.currentUser.uid,
                 displayName: username,
             }).then(() => {
                 window.location.href = "./login.html";
@@ -75,7 +79,6 @@ export class FirebaseApp {
         });
     }
     async listenToConnection() {
-        await this.waitUntilUserAvailable();
         const connectedRef = ref(this.db, ".info/connected");
         const onConnected = async (snap) => {
             if (snap.val()) {
@@ -86,6 +89,12 @@ export class FirebaseApp {
                     await this.addToActivePlayers();
                     console.log("User added to active-players");
                     onDisconnect(ref(this.db, `active-players/${this.auth.currentUser.uid}`)).remove();
+                    if (this.newClient) {
+                        onDisconnect(ref(this.db, `rooms/${this.newClient.uid}/${this.playerKey}`)).remove();
+                        onDisconnect(ref(this.db, `rooms/${this.newClient.uid}/presence`)).update({
+                            [this.playerKey]: false,
+                        });
+                    }
                 }
                 catch (error) {
                     console.error("Error adding user to active-players:", error.message);
@@ -112,7 +121,9 @@ export class FirebaseApp {
             uid: this.auth.currentUser.uid,
             username: this.auth.currentUser.displayName,
         });
-        await this.changePlayerPresence(this.newClient.uid, "player1", true);
+        this.playerKey = "player1";
+        this.otherPlayerKey = "player2";
+        await this.changePlayerPresence(this.newClient.uid, true);
     }
     async joinRoom(roomId) {
         this.newClient = new Client(this, roomId);
@@ -120,8 +131,28 @@ export class FirebaseApp {
             uid: this.auth.currentUser.uid,
             username: this.auth.currentUser.displayName,
         });
-        // fix
-        await this.changePlayerPresence(this.newClient.uid, "player2", true);
+        this.playerKey = "player2";
+        this.otherPlayerKey = "player1";
+        await this.changePlayerPresence(this.newClient.uid, true);
+        this.deleteRoomWhenNoPlayers();
+    }
+    deleteRoomWhenNoPlayers() {
+        const roomRef = ref(this.db, `rooms/${this.newClient.uid}`);
+        const connectedRef = ref(this.db, `.info/connected`);
+        onValue(connectedRef, async (snap) => {
+            console.log(snap.val());
+            if (!snap.val() && !this.otherConnection) {
+                await remove(roomRef);
+                onDisconnect(roomRef).remove((error) => {
+                    if (error) {
+                        console.error("disconnect failed: " + error);
+                    }
+                    else {
+                        console.log("successful");
+                    }
+                });
+            }
+        });
     }
     /**
      * This will listen for when the players join
@@ -132,17 +163,10 @@ export class FirebaseApp {
         const func = async (snap) => {
             const presenceData = await snap.val();
             console.log(presenceData);
-            console.log(presenceData.player1);
-            console.log(presenceData.player2);
-            if (presenceData && presenceData.player1) {
-                console.log("player1", presenceData.player1);
-            }
-            if (presenceData && presenceData.player2) {
-                console.log("player2", presenceData.player2);
-            }
-            if (presenceData.player1 === false && presenceData.player2 === false) {
-                remove(ref(this.db, `rooms/${this.newClient.uid}`));
-            }
+            this.otherConnection =
+                this.otherPlayerKey === "player1"
+                    ? presenceData.player1
+                    : presenceData.player2;
         };
         await onValue(ref(this.db, `rooms/${this.newClient.uid}/presence`), func);
     }
@@ -153,10 +177,16 @@ export class FirebaseApp {
             player2: false,
         });
     }
-    async changePlayerPresence(roomId, playerKey, newState) {
+    async changePlayerPresence(roomId, newState) {
         await update(ref(this.db, `rooms/${roomId}/presence`), {
-            [playerKey]: newState,
+            [this.playerKey]: newState,
         });
+    }
+    async signout() {
+        await signOut(this.auth);
+    }
+    userIsSingedOut() {
+        return !this.auth.currentUser;
     }
 }
 //# sourceMappingURL=firebase.js.map
