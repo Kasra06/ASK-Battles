@@ -41,7 +41,7 @@ export class FirebaseApp {
                 uid: this.auth.currentUser.uid,
                 displayName: username,
             }).then(() => {
-                window.location.href = "./login.html";
+                window.location.href = "./menu.html";
             });
         })
             .catch((error) => {
@@ -143,14 +143,7 @@ export class FirebaseApp {
             console.log(snap.val());
             if (!snap.val() && !this.otherConnection) {
                 await remove(roomRef);
-                onDisconnect(roomRef).remove((error) => {
-                    if (error) {
-                        console.error("disconnect failed: " + error);
-                    }
-                    else {
-                        console.log("successful");
-                    }
-                });
+                onDisconnect(roomRef).remove();
             }
         });
     }

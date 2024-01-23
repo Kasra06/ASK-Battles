@@ -56,7 +56,7 @@ export class FirebaseApp {
           uid: this.auth.currentUser.uid,
           displayName: username,
         }).then(() => {
-          window.location.href = "./login.html";
+          window.location.href = "./menu.html";
         });
       })
       .catch((error) => {

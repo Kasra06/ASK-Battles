@@ -20,7 +20,6 @@ export class WindowControl {
             "join.html": () => this.joinRoomControls(),
             "room.html": () => this.roomControls(),
         };
-        console.log(this.getUrlKey(windowLocationHref));
         controls[this.getUrlKey(windowLocationHref)](); // Invoke the function
     }
     getUrlKey(url) {
