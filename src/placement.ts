@@ -1,6 +1,6 @@
-import { Rect } from "./rect";
-import { Canvas } from "./canvas";
-import { Controller } from "./controller";
+import { Rect } from "./rect.js";
+import { Canvas } from "./canvas.js";
+import { Controller } from "./controller.js";
 export class PlacementTile extends Rect {
   private controller: Controller;
   private _used: boolean = false;

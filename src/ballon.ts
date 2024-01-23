@@ -1,5 +1,5 @@
-import { Rect } from "./rect";
-import { Canvas } from "./canvas";
+import { Rect } from "./rect.js";
+import { Canvas } from "./canvas.js";
 export class Ballon extends Rect {
   private wayPoints = [
     { x: 754, y: -70 },

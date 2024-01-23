@@ -1,5 +1,5 @@
 import { FirebaseApp } from "./firebase";
-import { Canvas } from "./canvas";
+import { Canvas } from "./canvas.js";
 
 export class WindowControl {
   private firebase: FirebaseApp;
@@ -7,59 +7,96 @@ export class WindowControl {
     this.firebase = firebase;
     this.updateWindowControls(window.location.href);
   }
-  updateWindowControls(windowLocationHref: string) {
+
+  private async updateWindowControls(windowLocationHref: string) {
     if (windowLocationHref.includes("register")) {
-      document.getElementById("register").addEventListener("click", () => {
-        this.firebase.register(
-          (document.getElementById("email") as HTMLInputElement).value,
-          (document.getElementById("password") as HTMLInputElement).value,
-          (document.getElementById("username") as HTMLInputElement).value
-        );
-      });
+      this.registerControls();
     } else if (windowLocationHref.includes("login")) {
-      document.getElementById("login").addEventListener("click", () => {
-        this.firebase.login(
-          (document.getElementById("email") as HTMLInputElement).value,
-          (document.getElementById("password") as HTMLInputElement).value
-        );
-      });
+      this.loginControls();
     } else if (windowLocationHref.includes("lobby")) {
-      document.getElementById("login").addEventListener("click", () => {
-        window.location.href = "./login.html";
-      });
-      document.getElementById("register").addEventListener("click", () => {
-        window.location.href = "./register.html";
-      });
+      this.lobbyControls();
     } else if (windowLocationHref.includes("menu")) {
-      document.getElementById("join-room").addEventListener("click", () => {
-        window.location.href = "./join.html";
-      });
-      document.getElementById("create-room").addEventListener("click", () => {
-        window.location.href = "./room.html";
-      });
-      this.firebase.listenToConnection();
+      this.menuControls();
     } else if (windowLocationHref.includes("join")) {
-      document.getElementById("join").addEventListener("click", () => {
-        localStorage.setItem(
-          "room-code",
-          (document.getElementById("room-code") as HTMLInputElement).value
-        );
-        window.location.href = "./room.html";
-      });
+      this.joinRoomControls();
     } else if (windowLocationHref.includes("room")) {
-      if (!localStorage.getItem("room-code")) {
-        this.firebase.createRoom().then(() => {
-          console.log(this.firebase);
-          console.log(this.firebase.newClient);
-          (
-            document.getElementById("room-code") as HTMLParagraphElement
-          ).innerText = this.firebase.newClient.uid;
-        });
-      } else {
-        this.firebase.joinRoom(localStorage.getItem("room-code"));
-      }
+      await this.roomControls();
     } else if (windowLocationHref.includes("game")) {
       new Canvas();
     }
+  }
+
+  private async roomControls(): Promise<void> {
+    await this.firebase.listenToConnection();
+    await this.firebase.waitUntilUserAvailable();
+    if (!localStorage.getItem("room-code")) {
+      await this.firebase.createRoom().then(() => {
+        console.log(this.firebase);
+        console.log(this.firebase.newClient);
+        this.displayRoomCode;
+      });
+    } else {
+      await this.firebase
+        .joinRoom(localStorage.getItem("room-code"))
+        .then(() => {
+          console.log(this.firebase);
+          console.log(this.firebase.newClient);
+          this.displayRoomCode;
+        });
+    }
+    await this.firebase.listenToPresence();
+  }
+
+  private registerControls(): void {
+    document.getElementById("register").addEventListener("click", () => {
+      this.firebase.register(
+        (document.getElementById("email") as HTMLInputElement).value,
+        (document.getElementById("password") as HTMLInputElement).value,
+        (document.getElementById("username") as HTMLInputElement).value
+      );
+    });
+  }
+
+  private loginControls(): void {
+    document.getElementById("login").addEventListener("click", () => {
+      this.firebase.login(
+        (document.getElementById("email") as HTMLInputElement).value,
+        (document.getElementById("password") as HTMLInputElement).value
+      );
+    });
+  }
+
+  private lobbyControls(): void {
+    document.getElementById("login").addEventListener("click", () => {
+      window.location.href = "./login.html";
+    });
+    document.getElementById("register").addEventListener("click", () => {
+      window.location.href = "./register.html";
+    });
+  }
+
+  private menuControls(): void {
+    document.getElementById("join-room").addEventListener("click", () => {
+      window.location.href = "./join.html";
+    });
+    document.getElementById("create-room").addEventListener("click", () => {
+      window.location.href = "./room.html";
+    });
+    this.firebase.listenToConnection();
+  }
+
+  private joinRoomControls(): void {
+    document.getElementById("join").addEventListener("click", () => {
+      localStorage.setItem(
+        "room-code",
+        (document.getElementById("room-code") as HTMLInputElement).value
+      );
+      window.location.href = "./room.html";
+    });
+  }
+
+  private displayRoomCode(): void {
+    (document.getElementById("room-code") as HTMLParagraphElement).innerText =
+      this.firebase.newClient.uid;
   }
 }

@@ -1,5 +1,5 @@
-import { Rect } from "./rect";
-import { Canvas } from "./canvas";
+import { Rect } from "./rect.js";
+import { Canvas } from "./canvas.js";
 export class Building extends Rect {
   constructor(
     x: number,

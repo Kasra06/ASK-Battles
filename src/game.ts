@@ -1,7 +1,7 @@
-import { Canvas } from "./canvas";
-import { Ballon } from "./ballon";
-import { Building } from "./building";
-import { PlacementTile } from "./placement";
+import { Canvas } from "./canvas.js";
+import { Ballon } from "./ballon.js";
+import { Building } from "./building.js";
+import { PlacementTile } from "./placement.js";
 // reminder a lot of stuff use 32 since its the size of the pixels of each thing, can prob make a varible in canvas or
 //smth then just use that worldwide
 export class Game {

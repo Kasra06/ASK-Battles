@@ -1,3 +1,32 @@
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 #gameScreen {
   border: 1px solid black;
+}
+
+.btn-holder {
+  display: flex;
+  width: 75%;
+  height: 50%;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid black;
+}
+
+.seperator {
+  width: 25%;
+}
+
+button {
+  font-size: 4vh;
+  border-radius: 10px;
+  padding-left: 3vh;
+  padding-right: 3vh;
+  padding-top: 1vh;
+  padding-bottom: 1vh;
+  background-color: rgb(255, 193, 7);
 }

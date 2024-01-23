@@ -1,4 +1,4 @@
-import { Canvas } from "./canvas";
+import { Canvas } from "./canvas.js";
 export class Rect {
   constructor(
     protected _x: number,

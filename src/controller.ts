@@ -1,4 +1,4 @@
-import { Canvas } from "./canvas";
+import { Canvas } from "./canvas.js";
 export class Controller {
   private _mouseX: number;
   private _mouseY: number;

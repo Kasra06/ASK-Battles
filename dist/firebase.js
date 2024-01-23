@@ -1,20 +1,21 @@
 // @ts-ignore Import module
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 // @ts-ignore Import module
-import { getDatabase, set, ref, remove, onValue, onDisconnect,
+import { getDatabase, set, ref, remove, onValue, off, onDisconnect, update,
 // @ts-ignore Import module
  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { firebaseConfig } from "./config.js";
 import { Client } from "./client.js";
 // @ts-ignore Import module
-import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut,
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile,
 // @ts-ignore Import module
  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-class FirebaseApp {
+export class FirebaseApp {
     app;
     db;
     auth;
-    _newClient;
+    newClient;
+    connectionListener;
     constructor() {
         this.app = initializeApp(firebaseConfig);
         this.db = getDatabase(this.app);
@@ -60,73 +61,102 @@ class FirebaseApp {
             }
         });
     }
-    listenToConnection() {
-        console.log(this.db);
-        console.log(this.auth);
-        console.log(this.auth.currentUser);
-        console.log(this.auth.currentUser.uid);
-        return new Promise((resolve, reject) => {
-            onDisconnect(ref(this.db, `active-players/${this.auth.currentUser.uid}`)).remove();
-            onValue(ref(this.db, ".info/connected"), (snap) => {
+    waitUntilUserAvailable() {
+        return new Promise((resolve) => {
+            const connectedRef = ref(this.db, ".info/connected");
+            const onConnected = (snap) => {
                 if (snap.val()) {
-                    this.addToActivePlayers();
-                    resolve(); // Resolve the promise when addToActivePlayers completes
+                    // User is available
+                    resolve();
+                    off(connectedRef, onConnected); // Remove the listener once resolved
                 }
-                else {
-                    signOut(this.auth)
-                        .then(() => {
-                        remove(ref(this.db, `active-players/${this.auth.currentUser.uid}`))
-                            .then(() => {
-                            resolve(); // Resolve the promise when removal completes
-                        })
-                            .catch(reject); // Reject the promise if removal fails
-                    })
-                        .catch(reject); // Reject the promise if signOut fails
-                }
-            });
+            };
+            onValue(connectedRef, onConnected);
         });
     }
-    addToActivePlayers() {
+    async listenToConnection() {
+        await this.waitUntilUserAvailable();
+        const connectedRef = ref(this.db, ".info/connected");
+        const onConnected = async (snap) => {
+            if (snap.val()) {
+                // User is connected
+                console.log("User is connected");
+                try {
+                    // Add the user to active-players
+                    await this.addToActivePlayers();
+                    console.log("User added to active-players");
+                    onDisconnect(ref(this.db, `active-players/${this.auth.currentUser.uid}`)).remove();
+                }
+                catch (error) {
+                    console.error("Error adding user to active-players:", error.message);
+                }
+            }
+        };
+        // Add the listener for connection status
+        onValue(connectedRef, onConnected);
+    }
+    async addToActivePlayers() {
         console.log("adding to active players");
         console.log(this.auth.currentUser);
         console.log(this.auth.currentUser.uid);
         console.log(this.auth.currentUser.displayName);
-        set(ref(this.db, `active-players/${this.auth.currentUser.uid}`), {
+        await set(ref(this.db, `active-players/${this.auth.currentUser.uid}`), {
             username: this.auth.currentUser.displayName,
         });
     }
-    createRoom() {
+    async createRoom() {
         console.log("creatig room");
-        return new Promise((resolve, reject) => {
-            onAuthStateChanged(this.auth, () => {
-                this._newClient = new Client(this);
-                set(ref(this.db, `rooms/${this._newClient.uid}/player1`), {
-                    uid: this.auth.currentUser.uid,
-                    username: this.auth.currentUser.displayName,
-                })
-                    .then(() => {
-                    resolve();
-                    // window.location.href = "./room.html";
-                })
-                    .catch((error) => {
-                    console.log(error.code, error.message);
-                    reject();
-                });
-            });
+        this.newClient = new Client(this);
+        await this.initializePlayerPresences(this.newClient.uid);
+        await set(ref(this.db, `rooms/${this.newClient.uid}/player1`), {
+            uid: this.auth.currentUser.uid,
+            username: this.auth.currentUser.displayName,
+        });
+        await this.changePlayerPresence(this.newClient.uid, "player1", true);
+    }
+    async joinRoom(roomId) {
+        this.newClient = new Client(this, roomId);
+        await set(ref(this.db, `rooms/${roomId}/player2`), {
+            uid: this.auth.currentUser.uid,
+            username: this.auth.currentUser.displayName,
+        });
+        // fix
+        await this.changePlayerPresence(this.newClient.uid, "player2", true);
+    }
+    /**
+     * This will listen for when the players join
+     * I haven't thought of the use for it yet
+     * should be useful for the game tho
+     */
+    async listenToPresence() {
+        const func = async (snap) => {
+            const presenceData = await snap.val();
+            console.log(presenceData);
+            console.log(presenceData.player1);
+            console.log(presenceData.player2);
+            if (presenceData && presenceData.player1) {
+                console.log("player1", presenceData.player1);
+            }
+            if (presenceData && presenceData.player2) {
+                console.log("player2", presenceData.player2);
+            }
+            if (presenceData.player1 === false && presenceData.player2 === false) {
+                remove(ref(this.db, `rooms/${this.newClient.uid}`));
+            }
+        };
+        await onValue(ref(this.db, `rooms/${this.newClient.uid}/presence`), func);
+    }
+    async initializePlayerPresences(roomId) {
+        console.log("initializing the presence");
+        await set(ref(this.db, `rooms/${roomId}/presence`), {
+            player1: false,
+            player2: false,
         });
     }
-    joinRoom(roomId) {
-        this._newClient = new Client(this, roomId);
-        onAuthStateChanged(this.auth, () => {
-            set(ref(this.db, `rooms/${roomId}/player2`), {
-                uid: this.auth.currentUser.uid,
-                username: this.auth.currentUser.displayName,
-            });
+    async changePlayerPresence(roomId, playerKey, newState) {
+        await update(ref(this.db, `rooms/${roomId}/presence`), {
+            [playerKey]: newState,
         });
-    }
-    get newClient() {
-        return this._newClient;
     }
 }
-export { FirebaseApp };
 //# sourceMappingURL=firebase.js.map
